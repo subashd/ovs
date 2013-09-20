@@ -49,6 +49,7 @@
  */
 struct vxlan_port {
 	struct vxlan_sock *vs;
+	struct nsh_ctx nsh_ctx;
 	char name[IFNAMSIZ];
 };
 
@@ -79,9 +80,23 @@ static int vxlan_get_options(const struct vport *vport, struct sk_buff *skb)
 {
 	struct vxlan_port *vxlan_port = vxlan_vport(vport);
 	__be16 dst_port = inet_sport(vxlan_port->vs->sock->sk);
+	struct nsh_ctx *n = &vxlan_port->nsh_ctx;
 
 	if (nla_put_u16(skb, OVS_TUNNEL_ATTR_DST_PORT, ntohs(dst_port)))
 		return -EMSGSIZE;
+
+	if (nla_put_u32(skb, OVS_TUNNEL_ATTR_NSH_NPC, ntohl(n->npc)))
+		return -EMSGSIZE;
+
+	if (nla_put_u32(skb, OVS_TUNNEL_ATTR_NSH_NSC, ntohl(n->nsc)))
+		return -EMSGSIZE;
+
+	if (nla_put_u32(skb, OVS_TUNNEL_ATTR_NSH_SPC, ntohl(n->spc)))
+		return -EMSGSIZE;
+
+	if (nla_put_u32(skb, OVS_TUNNEL_ATTR_NSH_SSC, ntohl(n->ssc)))
+		return -EMSGSIZE;
+
 	return 0;
 }
 
@@ -133,6 +148,28 @@ static struct vport *vxlan_tnl_create(const struct vport_parms *parms)
 	}
 	vxlan_port->vs = vs;
 
+	memset(&vxlan_port->nsh_ctx, 0x00, sizeof(vxlan_port->nsh_ctx));
+
+	a = nla_find_nested(options, OVS_TUNNEL_ATTR_NSH_NPC);
+	if (a && nla_len(a) == sizeof(u32)) {
+		vxlan_port->nsh_ctx.npc = htonl(nla_get_u32(a));
+	}
+
+	a = nla_find_nested(options, OVS_TUNNEL_ATTR_NSH_NSC);
+	if (a && nla_len(a) == sizeof(u32)) {
+		vxlan_port->nsh_ctx.nsc = htonl(nla_get_u32(a));
+	}
+
+	a = nla_find_nested(options, OVS_TUNNEL_ATTR_NSH_SPC);
+	if (a && nla_len(a) == sizeof(u32)) {
+		vxlan_port->nsh_ctx.spc = htonl(nla_get_u32(a));
+	}
+
+	a = nla_find_nested(options, OVS_TUNNEL_ATTR_NSH_SSC);
+	if (a && nla_len(a) == sizeof(u32)) {
+		vxlan_port->nsh_ctx.ssc = htonl(nla_get_u32(a));
+	}
+
 	return vport;
 
 error:
@@ -177,7 +214,7 @@ static int vxlan_tnl_send(struct vport *vport, struct sk_buff *skb)
 	inet_get_local_port_range(net, &port_min, &port_max);
 	src_port = vxlan_src_port(port_min, port_max, skb);
 
-	err = vxlan_xmit_skb(vxlan_port->vs, rt, skb,
+	err = vxlan_xmit_skb(vxlan_port->vs, rt, skb, &vxlan_port->nsh_ctx,
 			     saddr, tun_key->ipv4_dst,
 			     tun_key->ipv4_tos,
 			     tun_key->ipv4_ttl, df,

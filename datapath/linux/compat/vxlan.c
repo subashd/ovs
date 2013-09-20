@@ -210,7 +210,7 @@ static int handle_offloads(struct sk_buff *skb)
 }
 
 int vxlan_xmit_skb(struct vxlan_sock *vs,
-		   struct rtable *rt, struct sk_buff *skb,
+		   struct rtable *rt, struct sk_buff *skb, struct nsh_ctx *nc,
 		   __be32 src, __be32 dst, __u8 tos, __u8 ttl, __be16 df,
 		   __be16 src_port, __be16 dst_port, __be32 vni, __be32 nsp)
 {
@@ -251,8 +251,8 @@ int vxlan_xmit_skb(struct vxlan_sock *vs,
 		/* b2 should precede svc_idx, else svc_idx will be zero */
 		nsh->b.b2 = nsp & htonl(NSH_M_NSP);
 		nsh->b.svc_idx = nsi ? nsi : 0x01;
-		nsh->b.c = 0;
-		memset(&nsh->c, 0x00, sizeof nsh->c);
+		nsh->b.c = (nc->npc || nc->nsc || nc->spc || nc->ssc) ? 1 : 0;
+		memcpy(&nsh->c, nc, sizeof nsh->c);
 	}
 
 	vxh = (struct vxlanhdr *) __skb_push(skb, sizeof(*vxh));

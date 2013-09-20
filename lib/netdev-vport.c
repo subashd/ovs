@@ -139,6 +139,17 @@ netdev_vport_needs_dst_port(const struct netdev *dev)
              !strcmp("lisp", type)));
 }
 
+static bool
+netdev_vport_is_nsh(const struct netdev *dev)
+{
+    const struct netdev_class *class = netdev_get_class(dev);
+    const char *type = netdev_get_type(dev);
+
+    return (class->get_config == get_tunnel_config &&
+            (!strcmp("vxlan", type) || !strcmp("lisp", type) ||
+             !strcmp("gre", type) || !strcmp("gre64", type)));
+}
+
 const char *
 netdev_vport_class_get_dpif_port(const struct netdev_class *class)
 {
@@ -454,12 +465,14 @@ set_tunnel_config(struct netdev *dev_, const struct smap *args)
     bool ipsec_mech_set, needs_dst_port, has_csum;
     struct netdev_tunnel_config tnl_cfg;
     struct smap_node *node;
+    bool is_nsh;
 
     has_csum = strstr(type, "gre");
     ipsec_mech_set = false;
     memset(&tnl_cfg, 0, sizeof tnl_cfg);
 
     needs_dst_port = netdev_vport_needs_dst_port(dev_);
+    is_nsh = netdev_vport_is_nsh(dev_);
     tnl_cfg.ipsec = strstr(type, "ipsec");
     tnl_cfg.dont_fragment = true;
 
@@ -517,6 +530,14 @@ set_tunnel_config(struct netdev *dev_, const struct smap *args)
             if (!strcmp(node->value, "false")) {
                 tnl_cfg.dont_fragment = false;
             }
+        } else if (!strcmp(node->key, "nsh_npc") && is_nsh) {
+            tnl_cfg.nsh_npc = htonl(atol(node->value));
+        } else if (!strcmp(node->key, "nsh_nsc") && is_nsh) {
+            tnl_cfg.nsh_nsc = htonl(atol(node->value));
+        } else if (!strcmp(node->key, "nsh_spc") && is_nsh) {
+            tnl_cfg.nsh_spc = htonl(atol(node->value));
+        } else if (!strcmp(node->key, "nsh_ssc") && is_nsh) {
+            tnl_cfg.nsh_ssc = htonl(atol(node->value));
         } else if (!strcmp(node->key, "peer_cert") && tnl_cfg.ipsec) {
             if (smap_get(args, "certificate")) {
                 ipsec_mech_set = true;
@@ -671,6 +692,7 @@ get_tunnel_config(const struct netdev *dev, struct smap *args)
     struct netdev_vport *netdev = netdev_vport_cast(dev);
     struct netdev_tunnel_config tnl_cfg;
     const char *type = netdev_get_type(dev);
+    bool is_nsh = netdev_vport_is_nsh(dev);
 
     ovs_mutex_lock(&netdev->mutex);
     tnl_cfg = netdev->tnl_cfg;
@@ -730,6 +752,25 @@ get_tunnel_config(const struct netdev *dev, struct smap *args)
         }
     }
 
+    if (tnl_cfg.in_nsi_flow && tnl_cfg.out_nsi_flow) {
+        smap_add(args, "nsi", "flow");
+    } else if (tnl_cfg.in_nsi_present && tnl_cfg.out_nsi_present
+               && tnl_cfg.in_nsi == tnl_cfg.out_nsi) {
+        smap_add_format(args, "nsi", "%"PRIu8, tnl_cfg.in_nsi);
+    } else {
+        if (tnl_cfg.in_nsi_flow) {
+            smap_add(args, "in_nsi", "flow");
+        } else if (tnl_cfg.in_nsi_present) {
+            smap_add_format(args, "in_nsi", "%"PRIu8, tnl_cfg.in_nsi);
+        }
+
+        if (tnl_cfg.out_nsi_flow) {
+            smap_add(args, "out_nsi", "flow");
+        } else if (tnl_cfg.out_nsi_present) {
+            smap_add_format(args, "out_nsi", "%"PRIu8, tnl_cfg.out_nsi);
+        }
+    }
+
     if (tnl_cfg.ttl_inherit) {
         smap_add(args, "ttl", "inherit");
     } else if (tnl_cfg.ttl != DEFAULT_TTL) {
@@ -758,6 +799,22 @@ get_tunnel_config(const struct netdev *dev, struct smap *args)
 
     if (!tnl_cfg.dont_fragment) {
         smap_add(args, "df_default", "false");
+    }
+
+    if (is_nsh && tnl_cfg.nsh_npc) {
+        smap_add_format(args, "nsh_npc", "%d", ntohl(tnl_cfg.nsh_npc));
+    }
+
+    if (is_nsh && tnl_cfg.nsh_nsc) {
+        smap_add_format(args, "nsh_nsc", "%d", ntohl(tnl_cfg.nsh_nsc));
+    }
+
+    if (is_nsh && tnl_cfg.nsh_spc) {
+        smap_add_format(args, "nsh_spc", "%d", ntohl(tnl_cfg.nsh_spc));
+    }
+
+    if (is_nsh && tnl_cfg.nsh_ssc) {
+        smap_add_format(args, "nsh_ssc", "%d", ntohl(tnl_cfg.nsh_ssc));
     }
 
     return 0;
