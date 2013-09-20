@@ -111,6 +111,14 @@ struct netdev_tunnel_config {
     bool out_nsp_flow;
     ovs_be32 out_nsp;           /* outgoing NSH service path */
 
+    bool in_nsi_present;
+    bool in_nsi_flow;
+    uint8_t in_nsi;             /* incoming NSH service index */
+
+    bool out_nsi_present;
+    bool out_nsi_flow;
+    uint8_t out_nsi;            /* outgoing NSH service index */
+
     bool in_key_present;
     bool in_key_flow;
     ovs_be64 in_key;

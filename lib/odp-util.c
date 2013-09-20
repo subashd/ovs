@@ -835,6 +835,7 @@ tunnel_key_attr_len(int type)
     case OVS_TUNNEL_KEY_ATTR_OAM: return 0;
     case OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS: return -2;
     case OVS_TUNNEL_KEY_ATTR_NSP: return 4;
+    case OVS_TUNNEL_KEY_ATTR_NSI: return 1;
     case __OVS_TUNNEL_KEY_ATTR_MAX:
         return -1;
     }
@@ -931,6 +932,10 @@ odp_tun_key_from_attr(const struct nlattr *attr, struct flow_tnl *tun)
             tun->nsp = nl_attr_get_be32(a);
             tun->flags |= FLOW_TNL_F_NSP;
             break;
+        case OVS_TUNNEL_KEY_ATTR_NSI:
+            tun->nsi = nl_attr_get_u8(a);
+            tun->flags |= FLOW_TNL_F_NSI;
+            break;
         default:
             /* Allow this to show up as unexpected, if there are unknown
              * tunnel attribute, eventually resulting in ODP_FIT_TOO_MUCH. */
@@ -983,6 +988,9 @@ tun_key_to_attr(struct ofpbuf *a, const struct flow_tnl *tun_key)
         nl_msg_put_be32(a, OVS_TUNNEL_KEY_ATTR_NSP, tun_key->nsp);
 >>>>>>> nsh: userland support for network service headers
     }
+    if (tun_key->flags & FLOW_TNL_F_NSI) {
+        nl_msg_put_u8(a, OVS_TUNNEL_KEY_ATTR_NSI, tun_key->nsi);
+    }
 
     nl_msg_end_nested(a, tun_key_ofs);
 }
@@ -1014,6 +1022,7 @@ odp_mask_attr_is_exact(const struct nlattr *ma)
                                | FLOW_TNL_F_OAM)) {
 =======
                                | FLOW_TNL_F_NSP
+                               | FLOW_TNL_F_NSI
                                | FLOW_TNL_F_CSUM)) {
 >>>>>>> nsh: userland support for network service headers
             /* The flags are exact match, check the remaining fields. */
@@ -1142,11 +1151,13 @@ format_odp_key_attr(const struct nlattr *a, const struct nlattr *ma,
             odp_tun_key_from_attr(ma, &tun_mask);
             ds_put_format(ds, "tun_id=%#"PRIx64"/%#"PRIx64
                           ",nsp=%#"PRIx32"/%#"PRIx32
+                          ",nsi=%"PRIu8"/%"PRIu8
                           ",src="IP_FMT"/"IP_FMT",dst="IP_FMT"/"IP_FMT
                           ",tos=%#"PRIx8"/%#"PRIx8",ttl=%"PRIu8"/%#"PRIx8
                           ",flags(",
                           ntohll(tun_key.tun_id), ntohll(tun_mask.tun_id),
                           ntohl(tun_key.nsp), ntohl(tun_mask.nsp),
+                          tun_key.nsi, tun_mask.nsi,
                           IP_ARGS(tun_key.ip_src), IP_ARGS(tun_mask.ip_src),
                           IP_ARGS(tun_key.ip_dst), IP_ARGS(tun_mask.ip_dst),
                           tun_key.ip_tos, tun_mask.ip_tos,
@@ -1163,10 +1174,10 @@ format_odp_key_attr(const struct nlattr *a, const struct nlattr *ma,
             ds_put_char(ds, ')');
         } else {
             ds_put_format(ds, "tun_id=0x%"PRIx64",nsp=0x%"PRIx32
-                          ",src="IP_FMT",dst="IP_FMT","
+                          ",nsi=%"PRIu8",src="IP_FMT",dst="IP_FMT","
                           "tos=0x%"PRIx8",ttl=%"PRIu8",flags(",
                           ntohll(tun_key.tun_id),
-                          ntohl(tun_key.nsp),
+                          ntohl(tun_key.nsp), tun_key.nsi,
                           IP_ARGS(tun_key.ip_src),
                           IP_ARGS(tun_key.ip_dst),
                           tun_key.ip_tos, tun_key.ip_ttl);
@@ -1758,12 +1769,12 @@ parse_odp_key_mask_attr(const char *s, const struct simap *port_names,
         int n = -1;
 
         if (mask && ovs_scan(s, "tunnel(tun_id=%"SCNi64"/%"SCNi64","
-                             "nsp=%"PRIx32"/%"PRIx32","
+                             "nsp=%"PRIx32"/%"PRIx32",nsi=%"SCNi8"/%"SCNi8","
                              "src="IP_SCAN_FMT"/"IP_SCAN_FMT",dst="IP_SCAN_FMT
                              "/"IP_SCAN_FMT",tos=%"SCNi8"/%"SCNi8","
                              "ttl=%"SCNi8"/%"SCNi8",flags%n",
                              &tun_id, &tun_id_mask,
-                             &nsp, &nsp_mask,
+                             &nsp, &nsp_mask, &tun_key.nsi, &tun_key_mask.nsi,
                              IP_SCAN_ARGS(&tun_key.ip_src),
                              IP_SCAN_ARGS(&tun_key_mask.ip_src),
                              IP_SCAN_ARGS(&tun_key.ip_dst),
@@ -1795,10 +1806,10 @@ parse_odp_key_mask_attr(const char *s, const struct simap *port_names,
             }
             return n;
         } else if (ovs_scan(s, "tunnel(tun_id=%"SCNi64","
-                            "nsp=%"PRIx32","
+                            "nsp=%"PRIx32",nsi=%"SCNi8","
                             "src="IP_SCAN_FMT",dst="IP_SCAN_FMT
                             ",tos=%"SCNi8",ttl=%"SCNi8",flags%n", &tun_id,
-                            &nsp,
+                            &nsp, &tun_key.nsi,
                             IP_SCAN_ARGS(&tun_key.ip_src),
                             IP_SCAN_ARGS(&tun_key.ip_dst),
                             &tun_key.ip_tos, &tun_key.ip_ttl, &n)) {

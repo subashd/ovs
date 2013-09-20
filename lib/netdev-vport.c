@@ -418,6 +418,33 @@ parse_nsp(const struct smap *args, const char *name,
     }
 }
 
+static uint8_t
+parse_nsi(const struct smap *args, const char *name,
+          bool *present, bool *flow)
+{
+    const char *s;
+
+    *present = false;
+    *flow = false;
+
+    s = smap_get(args, name);
+    if (!s) {
+        s = smap_get(args, "nsi");
+        if (!s) {
+            return 0;
+        }
+    }
+
+    *present = true;
+
+    if (!strcmp(s, "flow")) {
+        *flow = true;
+        return 0;
+    } else {
+        return strtoul(s, NULL, 0);
+    }
+}
+
 static int
 set_tunnel_config(struct netdev *dev_, const struct smap *args)
 {
@@ -525,6 +552,10 @@ set_tunnel_config(struct netdev *dev_, const struct smap *args)
                    !strcmp(node->key, "in_nsp") ||
                    !strcmp(node->key, "out_nsp")) {
             /* Handled separately below. */
+        } else if (!strcmp(node->key, "nsi") ||
+                   !strcmp(node->key, "in_nsi") ||
+                   !strcmp(node->key, "out_nsi")) {
+            /* Handled separately below. */
         } else {
             VLOG_WARN("%s: unknown %s argument '%s'", name, type, node->key);
         }
@@ -606,6 +637,23 @@ set_tunnel_config(struct netdev *dev_, const struct smap *args)
         tnl_cfg.out_nsp = parse_nsp(args, "out_nsp",
                                     &tnl_cfg.out_nsp_present,
                                     &tnl_cfg.out_nsp_flow);
+
+        tnl_cfg.in_nsi = parse_nsi(args, "in_nsi",
+                                   &tnl_cfg.in_nsi_present,
+                                   &tnl_cfg.in_nsi_flow);
+
+        tnl_cfg.out_nsi = parse_nsi(args, "out_nsi",
+                                    &tnl_cfg.out_nsi_present,
+                                    &tnl_cfg.out_nsi_flow);
+
+        /* Default nsh service index is 1, if lower packet is dropped */
+        if (!tnl_cfg.in_nsi) {
+            tnl_cfg.in_nsi = 1;
+        }
+
+        if (!tnl_cfg.out_nsi) {
+            tnl_cfg.out_nsi = 1;
+        }
     }
 
     ovs_mutex_lock(&dev->mutex);

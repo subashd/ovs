@@ -700,6 +700,8 @@ flow_tun_flag_to_string(uint32_t flags)
         return "oam";
     case FLOW_TNL_F_NSP:
         return "nsp";
+    case FLOW_TNL_F_NSI:
+        return "nsi";
     default:
         return NULL;
     }

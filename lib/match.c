@@ -73,6 +73,9 @@ match_wc_init(struct match *match, const struct flow *flow)
         if (flow->tunnel.flags & FLOW_TNL_F_NSP) {
             memset(&wc->masks.tunnel.nsp, 0xff, sizeof wc->masks.tunnel.nsp);
         }
+        if (flow->tunnel.flags & FLOW_TNL_F_NSI) {
+            memset(&wc->masks.tunnel.nsi, 0xff, sizeof wc->masks.tunnel.nsi);
+        }
         memset(&wc->masks.tunnel.ip_src, 0xff, sizeof wc->masks.tunnel.ip_src);
         memset(&wc->masks.tunnel.ip_dst, 0xff, sizeof wc->masks.tunnel.ip_dst);
         memset(&wc->masks.tunnel.flags, 0xff, sizeof wc->masks.tunnel.flags);
@@ -84,6 +87,10 @@ match_wc_init(struct match *match, const struct flow *flow)
 
     if (flow->tunnel.nsp) {
         memset(&wc->masks.tunnel.nsp, 0xff, sizeof wc->masks.tunnel.nsp);
+    }
+
+    if (flow->tunnel.nsi) {
+        memset(&wc->masks.tunnel.nsi, 0xff, sizeof wc->masks.tunnel.nsi);
     }
 
     memset(&wc->masks.metadata, 0xff, sizeof wc->masks.metadata);
@@ -792,6 +799,19 @@ match_set_nsp(struct match *match, ovs_be32 nsp)
     match_set_nsp_masked(match, nsp, OVS_BE32_MAX);
 }
 
+void
+match_set_nsi_masked(struct match *match, uint8_t nsi, uint8_t mask)
+{
+    match->wc.masks.tunnel.nsi = mask;
+    match->flow.tunnel.nsi = nsi & mask;
+}
+
+void
+match_set_nsi(struct match *match, uint8_t nsi)
+{
+    match_set_nsi_masked(match, nsi, UINT8_MAX);
+}
+
 /* Returns true if 'a' and 'b' wildcard the same fields and have the same
  * values for fixed fields, otherwise false. */
 bool
@@ -937,6 +957,11 @@ format_flow_tunnel(struct ds *s, const struct match *match)
 
     format_be64_masked(s, "tun_id", tnl->tun_id, wc->masks.tunnel.tun_id);
     format_be32_masked(s, "nsp", tnl->nsp, wc->masks.tunnel.nsp);
+
+    if (wc->masks.tunnel.nsi) {
+        ds_put_format(s, "nsi=%"PRIu8",", tnl->nsi);
+    }
+
     format_ip_netmask(s, "tun_src", tnl->ip_src, wc->masks.tunnel.ip_src);
     format_ip_netmask(s, "tun_dst", tnl->ip_dst, wc->masks.tunnel.ip_dst);
 
