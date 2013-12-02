@@ -345,6 +345,7 @@ static int ipv4_tun_from_nlattr(const struct nlattr *attr,
 	int rem;
 	bool ttl = false;
 	__be16 tun_flags = 0;
+	__be32 nsp = 0;
 
 	nla_for_each_nested(a, attr, rem) {
 		int type = nla_type(a);
@@ -358,6 +359,7 @@ static int ipv4_tun_from_nlattr(const struct nlattr *attr,
 			[OVS_TUNNEL_KEY_ATTR_CSUM] = 0,
 			[OVS_TUNNEL_KEY_ATTR_OAM] = 0,
 			[OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS] = -1,
+			[OVS_TUNNEL_KEY_ATTR_NSP] = sizeof(u32),
 		};
 
 		if (type > OVS_TUNNEL_KEY_ATTR_MAX) {
@@ -455,6 +457,9 @@ static int ipv4_tun_from_nlattr(const struct nlattr *attr,
 				(unsigned long)GENEVE_OPTS((struct sw_flow_key *)0,
 							   nla_len(a)),
 				nla_data(a), nla_len(a), is_mask);
+		case OVS_TUNNEL_KEY_ATTR_NSP:
+			nsp = htonl(be32_to_cpu(nla_get_be32(a)) << 8);
+			tun_flags |= TUNNEL_NSP;
 			break;
 		default:
 			OVS_NLERR("Unknown IPv4 tunnel attribute (%d).\n", type);
@@ -462,6 +467,7 @@ static int ipv4_tun_from_nlattr(const struct nlattr *attr,
 		}
 	}
 
+	SW_FLOW_KEY_PUT(match, tun_key.nsp, nsp, is_mask);
 	SW_FLOW_KEY_PUT(match, tun_key.tun_flags, tun_flags, is_mask);
 
 	if (rem > 0) {
@@ -490,6 +496,7 @@ static int ipv4_tun_to_nlattr(struct sk_buff *skb,
 			      int swkey_tun_opts_len)
 {
 	struct nlattr *nla;
+	__be32 nsp = cpu_to_be32(ntohl(output->nsp) >> 8);
 
 	nla = nla_nest_start(skb, OVS_KEY_ATTR_TUNNEL);
 	if (!nla)
@@ -521,6 +528,9 @@ static int ipv4_tun_to_nlattr(struct sk_buff *skb,
 	if (tun_opts &&
 	    nla_put(skb, OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS,
 		    swkey_tun_opts_len, tun_opts))
+		return -EMSGSIZE;
+	if (output->tun_flags & TUNNEL_NSP &&
+	    nla_put_be32(skb, OVS_TUNNEL_KEY_ATTR_NSP, nsp))
 		return -EMSGSIZE;
 
 	nla_nest_end(skb, nla);
