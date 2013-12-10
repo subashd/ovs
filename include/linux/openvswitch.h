@@ -330,6 +330,12 @@ enum ovs_key_attr {
 	__OVS_KEY_ATTR_MAX
 };
 
+/**
+ * OVS_TUNNEL_KEY_ATTR_NSI below can never be zero, because
+ * if it is zero the packet gets dropped, thus all outgoing
+ * packets have this defaulted to 1 if no outgoing value is
+ * explicitly set.
+ */
 #define OVS_KEY_ATTR_MAX (__OVS_KEY_ATTR_MAX - 1)
 
 enum ovs_tunnel_key_attr {
@@ -343,6 +349,7 @@ enum ovs_tunnel_key_attr {
 	OVS_TUNNEL_KEY_ATTR_OAM,		/* No argument, OAM frame. */
 	OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS,	/* Array of Geneve options */
 	OVS_TUNNEL_KEY_ATTR_NSP,		/* be32 NSH svc path (lower 24 bits) */
+	OVS_TUNNEL_KEY_ATTR_NSI,		/* u8 NSH service index */
 	__OVS_TUNNEL_KEY_ATTR_MAX
 };
 #define OVS_TUNNEL_KEY_ATTR_MAX (__OVS_TUNNEL_KEY_ATTR_MAX - 1)
