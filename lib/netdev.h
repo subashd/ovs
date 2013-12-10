@@ -103,6 +103,14 @@ struct netdev_stats {
 
 /* Configuration specific to tunnels. */
 struct netdev_tunnel_config {
+    bool in_nsp_present;
+    bool in_nsp_flow;
+    ovs_be32 in_nsp;            /* incoming NSH service path */
+
+    bool out_nsp_present;
+    bool out_nsp_flow;
+    ovs_be32 out_nsp;           /* outgoing NSH service path */
+
     bool in_key_present;
     bool in_key_flow;
     ovs_be64 in_key;

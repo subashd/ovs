@@ -45,6 +45,7 @@ VLOG_DEFINE_THIS_MODULE(netdev_vport);
 #define GENEVE_DST_PORT 6081
 #define VXLAN_DST_PORT 4789
 #define LISP_DST_PORT 4341
+#define NSH_DST_PORT 6633
 
 #define DEFAULT_TTL 64
 
@@ -390,6 +391,33 @@ parse_key(const struct smap *args, const char *name,
     }
 }
 
+static ovs_be32
+parse_nsp(const struct smap *args, const char *name,
+          bool *present, bool *flow)
+{
+    const char *s;
+
+    *present = false;
+    *flow = false;
+
+    s = smap_get(args, name);
+    if (!s) {
+        s = smap_get(args, "nsp");
+        if (!s) {
+            return 0;
+        }
+    }
+
+    *present = true;
+
+    if (!strcmp(s, "flow")) {
+        *flow = true;
+        return 0;
+    } else {
+        return htonl(strtoul(s, NULL, 0));
+    }
+}
+
 static int
 set_tunnel_config(struct netdev *dev_, const struct smap *args)
 {
@@ -493,6 +521,10 @@ set_tunnel_config(struct netdev *dev_, const struct smap *args)
                    !strcmp(node->key, "in_key") ||
                    !strcmp(node->key, "out_key")) {
             /* Handled separately below. */
+        } else if (!strcmp(node->key, "nsp") ||
+                   !strcmp(node->key, "in_nsp") ||
+                   !strcmp(node->key, "out_nsp")) {
+            /* Handled separately below. */
         } else {
             VLOG_WARN("%s: unknown %s argument '%s'", name, type, node->key);
         }
@@ -566,6 +598,16 @@ set_tunnel_config(struct netdev *dev_, const struct smap *args)
                                &tnl_cfg.out_key_present,
                                &tnl_cfg.out_key_flow);
 
+    if (tnl_cfg.dst_port == htons(NSH_DST_PORT)) {
+        tnl_cfg.in_nsp = parse_nsp(args, "in_nsp",
+                                   &tnl_cfg.in_nsp_present,
+                                   &tnl_cfg.in_nsp_flow);
+
+        tnl_cfg.out_nsp = parse_nsp(args, "out_nsp",
+                                    &tnl_cfg.out_nsp_present,
+                                    &tnl_cfg.out_nsp_flow);
+    }
+
     ovs_mutex_lock(&dev->mutex);
     dev->tnl_cfg = tnl_cfg;
     tunnel_check_status_change__(dev);
@@ -580,6 +622,7 @@ get_tunnel_config(const struct netdev *dev, struct smap *args)
 {
     struct netdev_vport *netdev = netdev_vport_cast(dev);
     struct netdev_tunnel_config tnl_cfg;
+    const char *type = netdev_get_type(dev);
 
     ovs_mutex_lock(&netdev->mutex);
     tnl_cfg = netdev->tnl_cfg;
@@ -618,6 +661,27 @@ get_tunnel_config(const struct netdev *dev, struct smap *args)
         }
     }
 
+    if (tnl_cfg.in_nsp_flow && tnl_cfg.out_nsp_flow) {
+        smap_add(args, "nsp", "flow");
+    } else if (tnl_cfg.in_nsp_present && tnl_cfg.out_nsp_present
+               && tnl_cfg.in_nsp == tnl_cfg.out_nsp) {
+        smap_add_format(args, "nsp", "%#"PRIx32, ntohl(tnl_cfg.in_nsp));
+    } else {
+        if (tnl_cfg.in_nsp_flow) {
+            smap_add(args, "in_nsp", "flow");
+        } else if (tnl_cfg.in_nsp_present) {
+            smap_add_format(args, "in_nsp", "%#"PRIx32,
+                            ntohl(tnl_cfg.in_nsp));
+        }
+
+        if (tnl_cfg.out_nsp_flow) {
+            smap_add(args, "out_nsp", "flow");
+        } else if (tnl_cfg.out_nsp_present) {
+            smap_add_format(args, "out_nsp", "%#"PRIx32,
+                            ntohl(tnl_cfg.out_nsp));
+        }
+    }
+
     if (tnl_cfg.ttl_inherit) {
         smap_add(args, "ttl", "inherit");
     } else if (tnl_cfg.ttl != DEFAULT_TTL) {
@@ -632,7 +696,6 @@ get_tunnel_config(const struct netdev *dev, struct smap *args)
 
     if (tnl_cfg.dst_port) {
         uint16_t dst_port = ntohs(tnl_cfg.dst_port);
-        const char *type = netdev_get_type(dev);
 
         if ((!strcmp("geneve", type) && dst_port != GENEVE_DST_PORT) ||
             (!strcmp("vxlan", type) && dst_port != VXLAN_DST_PORT) ||

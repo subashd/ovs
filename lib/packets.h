@@ -34,6 +34,7 @@ struct ds;
 /* Tunnel information used in flow key and metadata. */
 struct flow_tnl {
     ovs_be64 tun_id;
+    ovs_be32 nsp;
     ovs_be32 ip_src;
     ovs_be32 ip_dst;
     uint16_t flags;
@@ -63,7 +64,7 @@ struct pkt_metadata {
 };
 
 #define PKT_METADATA_INITIALIZER(PORT) \
-    (struct pkt_metadata){ 0, 0, { 0, 0, 0, 0, 0, 0}, 0, 0, {(PORT)} }
+    (struct pkt_metadata){ 0, 0, { 0, 0, 0, 0, 0, 0, 0}, 0, 0, {(PORT)} }
 
 bool dpid_from_string(const char *s, uint64_t *dpidp);
 
