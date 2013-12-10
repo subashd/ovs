@@ -3776,6 +3776,10 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
         case OFPACT_SAMPLE:
             xlate_sample_action(ctx, ofpact_get_SAMPLE(a));
             break;
+
+        case OFPACT_SET_NSP:
+            flow->tunnel.nsp = htonl(ofpact_get_SET_NSP(a)->nsp);
+            break;
         }
     }
 }
