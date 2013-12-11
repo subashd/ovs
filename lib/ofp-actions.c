@@ -82,6 +82,7 @@ union ofp_action {
     struct nx_action_mpls_label mpls_label;
     struct nx_action_mpls_tc mpls_tc;
     struct nx_action_set_nsp set_nsp;
+    struct nx_action_set_nsi set_nsi;
 };
 
 static enum ofperr
@@ -373,6 +374,7 @@ ofpact_from_nxast(const union ofp_action *a, enum ofputil_action_code code,
 {
     struct ofpact_tunnel *tunnel;
     struct ofpact_nsp *nsp;
+    struct ofpact_nsi *nsi;
     enum ofperr error = 0;
 
     switch (code) {
@@ -505,6 +507,12 @@ ofpact_from_nxast(const union ofp_action *a, enum ofputil_action_code code,
         nsp = ofpact_put_SET_NSP(out);
         nsp->ofpact.compat = code;
         nsp->nsp = ntohl(a->set_nsp.nsp);
+        break;
+
+    case OFPUTIL_NXAST_SET_NSI:
+        nsi = ofpact_put_SET_NSI(out);
+        nsi->ofpact.compat = code;
+        nsi->nsi = a->set_nsi.nsi;
         break;
     }
 
@@ -1306,6 +1314,7 @@ ofpact_is_set_action(const struct ofpact *a)
     case OFPACT_SET_VLAN_PCP:
     case OFPACT_SET_VLAN_VID:
     case OFPACT_SET_NSP:
+    case OFPACT_SET_NSI:
         return true;
     case OFPACT_BUNDLE:
     case OFPACT_CLEAR_ACTIONS:
@@ -1374,6 +1383,7 @@ ofpact_is_allowed_in_actions_set(const struct ofpact *a)
     case OFPACT_SET_VLAN_VID:
     case OFPACT_STRIP_VLAN:
     case OFPACT_SET_NSP:
+    case OFPACT_SET_NSI:
         return true;
 
     /* In general these actions are excluded because they are not part of
@@ -1634,6 +1644,7 @@ ovs_instruction_type_from_ofpact_type(enum ofpact_type type)
     case OFPACT_EXIT:
     case OFPACT_SAMPLE:
     case OFPACT_SET_NSP:
+    case OFPACT_SET_NSI:
     default:
         return OVSINST_OFPIT11_APPLY_ACTIONS;
     }
@@ -2068,6 +2079,7 @@ ofpact_check__(enum ofputil_protocol *usable_protocols, struct ofpact *a,
     case OFPACT_POP_QUEUE:
     case OFPACT_RESUBMIT:
     case OFPACT_SET_NSP:
+    case OFPACT_SET_NSI:
         return 0;
 
     case OFPACT_FIN_TIMEOUT:
@@ -2486,6 +2498,11 @@ ofpact_to_nxast(const struct ofpact *a, struct ofpbuf *out)
             = htonl(ofpact_get_SET_NSP(a)->nsp);
         break;
 
+    case OFPACT_SET_NSI:
+        ofputil_put_NXAST_SET_NSI(out)->nsi
+            = ofpact_get_SET_NSI(a)->nsi;
+        break;
+
     case OFPACT_GROUP:
     case OFPACT_OUTPUT:
     case OFPACT_ENQUEUE:
@@ -2643,6 +2660,7 @@ ofpact_to_openflow10(const struct ofpact *a, struct ofpbuf *out)
     case OFPACT_POP_MPLS:
     case OFPACT_SAMPLE:
     case OFPACT_SET_NSP:
+    case OFPACT_SET_NSI:
         ofpact_to_nxast(a, out);
         break;
     }
@@ -2837,6 +2855,7 @@ ofpact_to_openflow11(const struct ofpact *a, struct ofpbuf *out)
     case OFPACT_EXIT:
     case OFPACT_SAMPLE:
     case OFPACT_SET_NSP:
+    case OFPACT_SET_NSI:
         ofpact_to_nxast(a, out);
         break;
     }
@@ -3166,6 +3185,7 @@ ofpact_outputs_to_port(const struct ofpact *ofpact, ofp_port_t port)
     case OFPACT_METER:
     case OFPACT_GROUP:
     case OFPACT_SET_NSP:
+    case OFPACT_SET_NSI:
     default:
         return false;
     }
@@ -3593,6 +3613,10 @@ ofpact_format(const struct ofpact *a, struct ds *s)
 
     case OFPACT_SET_NSP:
         ds_put_format(s, "set_nsp:%#"PRIx32, ofpact_get_SET_NSP(a)->nsp);
+        break;
+
+    case OFPACT_SET_NSI:
+        ds_put_format(s, "set_nsi:%"PRIu8, ofpact_get_SET_NSI(a)->nsi);
         break;
     }
 }

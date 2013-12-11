@@ -315,6 +315,7 @@ enum nx_action_subtype {
     NXAST_SET_MPLS_LABEL,       /* struct nx_action_ttl */
     NXAST_SET_MPLS_TC,          /* struct nx_action_ttl */
     NXAST_SET_NSP,              /* struct nx_action_set_nsp */
+    NXAST_SET_NSI,              /* struct nx_action_set_nsi */
 };
 
 /* Header for Nicira-defined actions. */
@@ -1880,6 +1881,20 @@ OFP_ASSERT(sizeof(struct nx_action_output_reg) == 24);
 #define NXM_NX_NSP     NXM_HEADER  (0x0001, 37, 4)
 #define NXM_NX_NSP_W   NXM_HEADER_W(0x0001, 37, 4)
 
+/* NSH Service Index.
+ *
+ * For a packet received via a VXLAN tunnel, it includes a (8-bit)
+ * network service header service index (nsi).
+ *
+ * Prereqs: None.
+ *
+ * Format: 8-bit integer.
+ *
+ * Masking: Arbitrary masks. */
+#define NXM_NX_NSI     NXM_HEADER  (0x0001, 38, 1)
+#define NXM_NX_NSI_W   NXM_HEADER_W(0x0001, 38, 1)
+
+
 /* ## --------------------- ## */
 /* ## Requests and replies. ## */
 /* ## --------------------- ## */
@@ -2431,5 +2446,18 @@ struct nx_action_set_nsp {
     ovs_be32 nsp;                   /* NSH service path ID. */
 };
 OFP_ASSERT(sizeof(struct nx_action_set_nsp) == 16);
+
+/* Action structure for NXAST_SET_NSI.
+ *
+ * Sets the encapsulating NSH service index to a 8-bit value. */
+struct nx_action_set_nsi {
+    ovs_be16 type;                  /* OFPAT_VENDOR. */
+    ovs_be16 len;                   /* Length is 16. */
+    ovs_be32 vendor;                /* NX_VENDOR_ID. */
+    ovs_be16 subtype;               /* NXAST_SET_NSI. */
+    uint8_t nsi;                    /* NSH service index. */
+    uint8_t pad[5];
+};
+OFP_ASSERT(sizeof(struct nx_action_set_nsi) == 16);
 
 #endif /* openflow/nicira-ext.h */

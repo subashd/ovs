@@ -3780,6 +3780,10 @@ do_xlate_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
         case OFPACT_SET_NSP:
             flow->tunnel.nsp = htonl(ofpact_get_SET_NSP(a)->nsp);
             break;
+
+        case OFPACT_SET_NSI:
+            flow->tunnel.nsi = ofpact_get_SET_NSI(a)->nsi;
+            break;
         }
     }
 }

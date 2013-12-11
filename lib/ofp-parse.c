@@ -637,6 +637,7 @@ parse_named_action(enum ofputil_action_code code,
     struct ofpact_vlan_vid *vlan_vid;
     struct ofpact_vlan_pcp *vlan_pcp;
     struct ofpact_nsp *nsp;
+    struct ofpact_nsi *nsi;
     char *error = NULL;
     uint16_t ethertype = 0;
     uint16_t vid = 0;
@@ -934,6 +935,11 @@ parse_named_action(enum ofputil_action_code code,
         error = str_to_u32(arg, &nsp->nsp);
         break;
 
+    case OFPUTIL_NXAST_SET_NSI:
+        nsi = ofpact_put_SET_NSI(ofpacts);
+        nsi->ofpact.compat = code;
+        error = str_to_u8(arg, "nsi", &nsi->nsi);
+        break;
     }
 
     if (error) {
