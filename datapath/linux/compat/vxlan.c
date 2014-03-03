@@ -62,6 +62,7 @@
 #define VXLAN_HLEN (sizeof(struct udphdr) + sizeof(struct vxlanhdr))
 
 #define VXLAN_FLAGS 0x08000000	/* struct vxlanhdr.vx_flags required value. */
+#define VXLAN_GPE_FLAGS 0x0C006558	/* Flags for ethernet over VXLAN-gpe */
 
 /* VXLAN protocol header */
 struct vxlanhdr {
@@ -79,11 +80,15 @@ static int vxlan_udp_encap_recv(struct sock *sk, struct sk_buff *skb)
 	if (!pskb_may_pull(skb, VXLAN_HLEN))
 		goto error;
 
-	/* Return packets with reserved bits set */
+	/* Return packets with reserved bits set for VXLAN.
+	 * Return non-ethernet packets for VXLAN-gpe until non
+	 * ethernet packets are supported here.
+	 */
 	vxh = (struct vxlanhdr *)(udp_hdr(skb) + 1);
-	if (vxh->vx_flags != htonl(VXLAN_FLAGS) ||
+	if (!(vxh->vx_flags == htonl(VXLAN_FLAGS) ||
+	      vxh->vx_flags == htonl(VXLAN_GPE_FLAGS)) ||
 	    (vxh->vx_vni & htonl(0xff))) {
-		pr_warn("invalid vxlan flags=%#x vni=%#x\n",
+		pr_warn("invalid vxlan(-gpe) flags=%#x vni=%#x\n",
 			ntohl(vxh->vx_flags), ntohl(vxh->vx_vni));
 		goto error;
 	}
