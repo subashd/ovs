@@ -220,7 +220,7 @@ static int vxlan_tnl_send(struct vport *vport, struct sk_buff *skb)
 			     tun_key->ipv4_ttl, df,
 			     src_port, dst_port,
 			     htonl(be64_to_cpu(tun_key->tun_id) << 8),
-			     OVS_CB(skb)->tun_key->nsp);
+			     OVS_CB(skb)->tun_info->tunnel.nsp);
 	if (err < 0)
 		ip_rt_put(rt);
 error:

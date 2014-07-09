@@ -351,9 +351,9 @@ enum ovs_tunnel_key_attr {
 	OVS_TUNNEL_KEY_ATTR_DONT_FRAGMENT,	/* No argument, set DF. */
 	OVS_TUNNEL_KEY_ATTR_CSUM,		/* No argument. CSUM packet. */
 	OVS_TUNNEL_KEY_ATTR_OAM,		/* No argument, OAM frame. */
-	OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS,	/* Array of Geneve options */
 	OVS_TUNNEL_KEY_ATTR_NSP,		/* be32 NSH svc path (lower 24 bits) */
 	OVS_TUNNEL_KEY_ATTR_NSI,		/* u8 NSH service index */
+	OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS,	/* Array of Geneve options */
 	__OVS_TUNNEL_KEY_ATTR_MAX
 };
 #define OVS_TUNNEL_KEY_ATTR_MAX (__OVS_TUNNEL_KEY_ATTR_MAX - 1)

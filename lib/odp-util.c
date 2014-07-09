@@ -833,9 +833,9 @@ tunnel_key_attr_len(int type)
     case OVS_TUNNEL_KEY_ATTR_DONT_FRAGMENT: return 0;
     case OVS_TUNNEL_KEY_ATTR_CSUM: return 0;
     case OVS_TUNNEL_KEY_ATTR_OAM: return 0;
-    case OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS: return -2;
     case OVS_TUNNEL_KEY_ATTR_NSP: return 4;
     case OVS_TUNNEL_KEY_ATTR_NSI: return 1;
+    case OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS: return -2;
     case __OVS_TUNNEL_KEY_ATTR_MAX:
         return -1;
     }
@@ -980,13 +980,11 @@ tun_key_to_attr(struct ofpbuf *a, const struct flow_tnl *tun_key)
     if (tun_key->flags & FLOW_TNL_F_CSUM) {
         nl_msg_put_flag(a, OVS_TUNNEL_KEY_ATTR_CSUM);
     }
-<<<<<<< HEAD
     if (tun_key->flags & FLOW_TNL_F_OAM) {
         nl_msg_put_flag(a, OVS_TUNNEL_KEY_ATTR_OAM);
-=======
+    }
     if (tun_key->flags & FLOW_TNL_F_NSP) {
         nl_msg_put_be32(a, OVS_TUNNEL_KEY_ATTR_NSP, tun_key->nsp);
->>>>>>> nsh: userland support for network service headers
     }
     if (tun_key->flags & FLOW_TNL_F_NSI) {
         nl_msg_put_u8(a, OVS_TUNNEL_KEY_ATTR_NSI, tun_key->nsi);
@@ -1017,14 +1015,10 @@ odp_mask_attr_is_exact(const struct nlattr *ma)
         odp_tun_key_from_attr(ma, &tun_mask);
         if (tun_mask.flags == (FLOW_TNL_F_KEY
                                | FLOW_TNL_F_DONT_FRAGMENT
-<<<<<<< HEAD
                                | FLOW_TNL_F_CSUM
-                               | FLOW_TNL_F_OAM)) {
-=======
                                | FLOW_TNL_F_NSP
                                | FLOW_TNL_F_NSI
-                               | FLOW_TNL_F_CSUM)) {
->>>>>>> nsh: userland support for network service headers
+                               | FLOW_TNL_F_OAM)) {
             /* The flags are exact match, check the remaining fields. */
             tun_mask.flags = 0xffff;
             is_exact = is_all_ones((uint8_t *)&tun_mask,

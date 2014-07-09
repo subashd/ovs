@@ -42,7 +42,7 @@ s/^/skb_priority(0),skb_mark(0),recirc_id(0),dp_hash(0),/
 
  echo
  echo '# Valid forms with tunnel header.'
- sed 's/^/skb_priority(0),tunnel(tun_id=0x7f10354,nsp=0x7f10354,nsi=234,src=10.10.10.10,dst=20.20.20.20,tos=0x0,ttl=64,flags(csum,keyi,nsp,nsi)),skb_mark(0x1234),recirc_id(0),dp_hash(0),/' odp-base.txt
+ sed 's/^/skb_priority(0),tunnel(tun_id=0x7f10354,nsp=0x7f10354,nsi=234,src=10.10.10.10,dst=20.20.20.20,tos=0x0,ttl=64,flags(csum,key,nsp,nsi)),skb_mark(0x1234),recirc_id(0),dp_hash(0),/' odp-base.txt
 
  echo
  echo '# Valid forms with VLAN header.'

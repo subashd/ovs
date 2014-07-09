@@ -7,7 +7,7 @@
 #include <net/nsh.h>
 
 #include <linux/version.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,15,0)
 #include_next <net/vxlan.h>
 
 static inline int rpl_vxlan_xmit_skb(struct vxlan_sock *vs,

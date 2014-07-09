@@ -3429,6 +3429,8 @@ ofpact_needs_recirculation_after_mpls(const struct xlate_ctx *ctx,
     case OFPACT_SET_MPLS_TTL:
     case OFPACT_SET_MPLS_TC:
     case OFPACT_SET_MPLS_LABEL:
+    case OFPACT_SET_NSP:
+    case OFPACT_SET_NSI:
     case OFPACT_NOTE:
     case OFPACT_OUTPUT_REG:
     case OFPACT_EXIT:

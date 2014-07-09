@@ -360,9 +360,9 @@ static int ipv4_tun_from_nlattr(const struct nlattr *attr,
 			[OVS_TUNNEL_KEY_ATTR_DONT_FRAGMENT] = 0,
 			[OVS_TUNNEL_KEY_ATTR_CSUM] = 0,
 			[OVS_TUNNEL_KEY_ATTR_OAM] = 0,
-			[OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS] = -1,
 			[OVS_TUNNEL_KEY_ATTR_NSP] = sizeof(u32),
 			[OVS_TUNNEL_KEY_ATTR_NSI] = 1,
+			[OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS] = -1,
 		};
 
 		if (type > OVS_TUNNEL_KEY_ATTR_MAX) {
@@ -410,6 +410,14 @@ static int ipv4_tun_from_nlattr(const struct nlattr *attr,
 			break;
 		case OVS_TUNNEL_KEY_ATTR_OAM:
 			tun_flags |= TUNNEL_OAM;
+			break;
+		case OVS_TUNNEL_KEY_ATTR_NSP:
+			nsp |= htonl(be32_to_cpu(nla_get_be32(a)) << 8);
+			tun_flags |= TUNNEL_NSP;
+			break;
+		case OVS_TUNNEL_KEY_ATTR_NSI:
+			nsp |= htonl(nla_get_u8(a));
+			tun_flags |= TUNNEL_NSI;
 			break;
 		case OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS:
 			if (nla_len(a) > sizeof(match->key->tun_opts)) {
@@ -460,13 +468,6 @@ static int ipv4_tun_from_nlattr(const struct nlattr *attr,
 				(unsigned long)GENEVE_OPTS((struct sw_flow_key *)0,
 							   nla_len(a)),
 				nla_data(a), nla_len(a), is_mask);
-		case OVS_TUNNEL_KEY_ATTR_NSP:
-			nsp |= htonl(be32_to_cpu(nla_get_be32(a)) << 8);
-			tun_flags |= TUNNEL_NSP;
-			break;
-		case OVS_TUNNEL_KEY_ATTR_NSI:
-			nsp |= htonl(nla_get_u8(a));
-			tun_flags |= TUNNEL_NSI;
 			break;
 		default:
 			OVS_NLERR("Unknown IPv4 tunnel attribute (%d).\n", type);
@@ -533,15 +534,15 @@ static int ipv4_tun_to_nlattr(struct sk_buff *skb,
 	if ((output->tun_flags & TUNNEL_OAM) &&
 		nla_put_flag(skb, OVS_TUNNEL_KEY_ATTR_OAM))
 		return -EMSGSIZE;
-	if (tun_opts &&
-	    nla_put(skb, OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS,
-		    swkey_tun_opts_len, tun_opts))
-		return -EMSGSIZE;
 	if (output->tun_flags & TUNNEL_NSP &&
 	    nla_put_be32(skb, OVS_TUNNEL_KEY_ATTR_NSP, nsp))
 		return -EMSGSIZE;
 	if (output->tun_flags & TUNNEL_NSI &&
 	    nla_put_u8(skb, OVS_TUNNEL_KEY_ATTR_NSI, nsi))
+		return -EMSGSIZE;
+	if (tun_opts &&
+	    nla_put(skb, OVS_TUNNEL_KEY_ATTR_GENEVE_OPTS,
+		    swkey_tun_opts_len, tun_opts))
 		return -EMSGSIZE;
 
 	nla_nest_end(skb, nla);
